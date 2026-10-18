@@ -1,0 +1,216 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Traffic Management System</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;font-family:Arial,sans-serif;background:#0b1220;color:#eaf0ff}
+header{padding:24px 18px;background:#111c30;border-bottom:1px solid #263650}
+header h1{margin:0;color:#60a5fa;font-size:25px}
+header p{color:#a7b5cc;margin-bottom:0}
+.container{max-width:1000px;margin:auto;padding:20px}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.card{background:#152137;border:1px solid #293b57;border-radius:15px;padding:18px}
+.label{color:#a7b5cc;font-size:13px}
+.value{font-size:27px;font-weight:bold;margin-top:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:15px;margin-top:18px}
+.road{background:#152137;border:1px solid #293b57;border-radius:15px;padding:18px}
+.road h2{font-size:18px;margin:0 0 14px}
+.status{display:inline-block;padding:6px 10px;border-radius:20px;background:#263650;font-size:12px}
+.light{display:flex;gap:8px;margin:14px 0}
+.bulb{width:23px;height:23px;border-radius:50%;background:#334155}
+.red.active{background:#ef4444;box-shadow:0 0 12px #ef444466}
+.yellow.active{background:#facc15;box-shadow:0 0 12px #facc1566}
+.green.active{background:#22c55e;box-shadow:0 0 12px #22c55e66}
+input{width:100%;padding:11px;margin-top:8px;border:1px solid #3a4b67;border-radius:8px;background:#0b1220;color:white;font-size:16px}
+button{border:0;border-radius:9px;padding:12px 16px;background:#3b82f6;color:white;font-weight:bold;cursor:pointer}
+button:hover{background:#2563eb}
+.primary{width:100%;margin-top:18px}
+.emergency{background:#7f1d1d;margin-top:12px;width:100%}
+.emergency:hover{background:#991b1b}
+.result{margin-top:18px;line-height:1.7}
+.log{margin-top:18px;color:#c4d0e4;line-height:1.8;font-size:14px}
+.note{color:#93a4bf;font-size:12px;line-height:1.6;margin-top:20px}
+@media(max-width:600px){.stats{grid-template-columns:1fr}.grid{grid-template-columns:1fr}header h1{font-size:21px}}
+</style>
+</head>
+<body>
+<header>
+  <h1>🚦 AI Traffic Management</h1>
+  <p>Smart traffic monitoring and adaptive signal simulation</p>
+</header>
+
+<main class="container">
+  <div class="stats">
+    <div class="card">
+      <div class="label">Total Vehicles</div>
+      <div class="value" id="total">100</div>
+    </div>
+    <div class="card">
+      <div class="label">Active Green Signal</div>
+      <div class="value" id="activeRoad">North</div>
+    </div>
+    <div class="card">
+      <div class="label">Suggested Green Time</div>
+      <div class="value" id="time">30 sec</div>
+    </div>
+  </div>
+
+  <div class="grid" id="roads"></div>
+
+  <button class="primary" onclick="optimize()">Analyze Traffic & Optimize Signals</button>
+  <button class="emergency" onclick="emergencyMode()">🚑 Simulate Emergency Vehicle</button>
+
+  <div class="card result" id="result">
+    Enter vehicle counts and analyze traffic to see recommendations.
+  </div>
+
+  <div class="card log">
+    <strong>System Activity</strong>
+    <div id="log">System initialized. Waiting for traffic data...</div>
+  </div>
+
+  <p class="note">
+    Educational simulation only. Signal recommendations use vehicle counts
+    and simple rules; this is not a trained AI model. No real traffic lights
+    or emergency services are connected.
+  </p>
+</main>
+
+<script>
+const directions = ["North", "South", "East", "West"];
+
+const traffic = {
+  North: 35,
+  South: 20,
+  East: 30,
+  West: 15
+};
+
+let active = "North";
+
+function renderRoads() {
+  document.getElementById("roads").innerHTML =
+    directions.map(name => `
+      <div class="road">
+        <h2>${name} Road</h2>
+        <span class="status" id="status-${name}">
+          ${name === active ? "GREEN SIGNAL" : "RED SIGNAL"}
+        </span>
+        <div class="light">
+          <div class="bulb red ${name !== active ? "active" : ""}"></div>
+          <div class="bulb yellow"></div>
+          <div class="bulb green ${name === active ? "active" : ""}"></div>
+        </div>
+        <label for="count-${name}">Vehicle count</label>
+        <input id="count-${name}" type="number"
+          min="0" max="10000" value="${traffic[name]}">
+      </div>
+    `).join("");
+}
+
+function readTraffic() {
+  for (const name of directions) {
+    const value = Number(
+      document.getElementById("count-" + name).value
+    );
+
+    if (!Number.isInteger(value) || value < 0 || value > 10000) {
+      alert("Enter a whole number from 0 to 10000 for every road.");
+      return false;
+    }
+
+    traffic[name] = value;
+  }
+  return true;
+}
+
+function greenTime(count) {
+  return Math.max(15, Math.min(60, 15 + count));
+}
+
+function updateDashboard() {
+  const total = directions.reduce(
+    (sum, name) => sum + traffic[name], 0
+  );
+
+  document.getElementById("total").textContent = total;
+  document.getElementById("activeRoad").textContent = active;
+  document.getElementById("time").textContent =
+    greenTime(traffic[active]) + " sec";
+
+  renderRoads();
+}
+
+function optimize() {
+  if (!readTraffic()) return;
+
+  active = directions.reduce((best, name) =>
+    traffic[name] > traffic[best] ? name : best
+  , directions[0]);
+
+  updateDashboard();
+
+  const highest = traffic[active];
+  const total = directions.reduce((sum, name) =>
+    sum + traffic[name], 0
+  );
+
+  const density = total === 0 ? 0 :
+    Math.round(highest / total * 100);
+
+  document.getElementById("result").innerHTML = `
+    <h3>📊 Traffic Analysis Result</h3>
+    <p>Highest traffic: <strong>${active} Road</strong></p>
+    <p>Vehicles detected in this simulation: <strong>${highest}</strong></p>
+    <p>Suggested green time: <strong>${greenTime(highest)} seconds</strong></p>
+    <p>Share of counted vehicles: <strong>${density}%</strong></p>
+    <p>Recommendation: Prioritize ${active} Road in this simulated
+    signal plan, then reassess the other roads.</p>
+  `;
+
+  document.getElementById("log").textContent =
+    "Traffic counts analyzed. Suggested priority: " + active +
+    " Road. This is a simulation, not a real signal command.";
+}
+
+function emergencyMode() {
+  if (!readTraffic()) return;
+
+  const choice = prompt(
+    "Which road has the simulated emergency vehicle? Enter North, South, East, or West:"
+  );
+
+  if (choice === null) return;
+
+  const road = directions.find(
+    name => name.toLowerCase() === choice.trim().toLowerCase()
+  );
+
+  if (!road) {
+    alert("Please enter North, South, East, or West.");
+    return;
+  }
+
+  active = road;
+  updateDashboard();
+
+  document.getElementById("result").innerHTML = `
+    <h3>🚑 Emergency Mode Simulation</h3>
+    <p><strong>${road} Road</strong> is selected as the priority road.</p>
+    <p>This demo changes the dashboard only. It does not control real signals.</p>
+  `;
+
+  document.getElementById("log").textContent =
+    "Emergency scenario simulated for " + road +
+    " Road. No emergency services were contacted.";
+}
+
+renderRoads();
+updateDashboard();
+</script>
+</body>
+</html>
